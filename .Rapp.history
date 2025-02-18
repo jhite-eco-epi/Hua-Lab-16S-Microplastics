@@ -1,0 +1,1950 @@
+# ----- Setup -----#
+library(dplyr)#
+library(lubridate)#
+library(ggplot2)#
+library(zoo)#
+library(TTR)#
+#
+# ----- Data Preparation -----#
+# Assume your data frame 'df' has the following columns:#
+# "time", "open", "high", "low", "close", "volume"#
+# Convert the time column to POSIXct (adjust the format if necessary) and create a date column.#
+df$time <- as.POSIXct(df$time)  #
+df$date <- as.Date(df$time)#
+#
+# ----- Calculate Indicators -----#
+# ADX: Average Directional Index using a 14-period lookback.#
+# Note: ADX() returns a matrix; we extract the "ADX" column.#
+df$ADX <- ADX(df[, c("high", "low", "close")], n = 14)[, "ADX"]#
+#
+# RSI: Relative Strength Index on the closing price.#
+df$RSI <- RSI(df$close, n = 14)#
+#
+# ATR: Average True Range using a 14-period lookback.#
+df$ATR <- ATR(df[, c("high", "low", "close")], n = 14)[, "atr"]#
+#
+# ----- Swing Point Detection Functions -----#
+# Define functions that detect swing highs and swing lows using a rolling window.#
+detectSwingHighs <- function(price, n = 5) {#
+  rollapply(price, width = 2 * n + 1,#
+            FUN = function(x) { x[n + 1] == max(x, na.rm = TRUE) },#
+            fill = NA, align = "center")#
+}#
+#
+detectSwingLows <- function(price, n = 5) {#
+  rollapply(price, width = 2 * n + 1,#
+            FUN = function(x) { x[n + 1] == min(x, na.rm = TRUE) },#
+            fill = NA, align = "center")#
+}#
+#
+# Function to process one day's data:#
+detectSwingsByDay <- function(day_data, n = 5) {#
+  # Ensure data is sorted by time#
+  day_data <- day_data %>% arrange(time)#
+  # Detect swing highs using the high prices#
+  day_data$swingHigh <- detectSwingHighs(day_data$high, n = n)#
+  # Detect swing lows using the low prices#
+  day_data$swingLow <- detectSwingLows(day_data$low, n = n)#
+  return(day_data)#
+}#
+#
+# ----- Split Data by Day (Optional) -----#
+# For example, randomly assign 70% of days to training.#
+set.seed(123)  # For reproducibility#
+unique_days <- unique(df$date)#
+train_days <- sample(unique_days, round(length(unique_days) * 0.7))#
+df_train <- df %>% filter(date %in% train_days)#
+# (You can similarly create a test set if needed.)#
+#
+# ----- Apply Swing Detection by Day -----#
+# Process each day in the training set to flag swing highs and lows.#
+df_train_swings <- df_train %>%#
+  group_by(date) %>%#
+  do(detectSwingsByDay(.)) %>%#
+  ungroup()#
+#
+# Extract the rows where a swing high or swing low was detected.#
+swing_high_rows <- df_train_swings %>% filter(swingHigh == TRUE)#
+swing_low_rows  <- df_train_swings %>% filter(swingLow == TRUE)#
+#
+# ----- Plot Density Distributions for ADX, RSI, and ATR -----#
+#
+# Plot for ADX:#
+p_ADX <- ggplot() +#
+  geom_density(data = swing_high_rows, aes(x = ADX, color = "Swing High"), adjust = 1.5) +#
+  geom_density(data = swing_low_rows, aes(x = ADX, color = "Swing Low"), adjust = 1.5) +#
+  labs(title = "ADX Distribution at Swing Points", x = "ADX", color = "Swing Type") +#
+  theme_minimal()#
+#
+# Plot for RSI:#
+p_RSI <- ggplot() +#
+  geom_density(data = swing_high_rows, aes(x = RSI, color = "Swing High"), adjust = 1.5) +#
+  geom_density(data = swing_low_rows, aes(x = RSI, color = "Swing Low"), adjust = 1.5) +#
+  labs(title = "RSI Distribution at Swing Points", x = "RSI", color = "Swing Type") +#
+  theme_minimal()#
+#
+# Plot for ATR:#
+p_ATR <- ggplot() +#
+  geom_density(data = swing_high_rows, aes(x = ATR, color = "Swing High"), adjust = 1.5) +#
+  geom_density(data = swing_low_rows, aes(x = ATR, color = "Swing Low"), adjust = 1.5) +#
+  labs(title = "ATR Distribution at Swing Points", x = "ATR", color = "Swing Type") +#
+  theme_minimal()#
+#
+# Print the plots#
+print(p_ADX)
+df
+df$time <- as.POSIXct(df$time)  #
+df$date <- as.Date(df$time)#
+#
+# ----- Calculate Indicators -----#
+# ADX: Average Directional Index using a 14-period lookback.#
+# Note: ADX() returns a matrix; we extract the "ADX" column.#
+df$ADX <- ADX(df[, c("high", "low", "close")], n = 14)[, "ADX"]#
+#
+# RSI: Relative Strength Index on the closing price.#
+df$RSI <- RSI(df$close, n = 14)#
+#
+# ATR: Average True Range using a 14-period lookback.#
+df$ATR <- ATR(df[, c("high", "low", "close")], n = 14)[, "atr"]#
+#
+# ----- Swing Point Detection Functions -----#
+# Define functions that detect swing highs and swing lows using a rolling window.#
+detectSwingHighs <- function(price, n = 5) {#
+  rollapply(price, width = 2 * n + 1,#
+            FUN = function(x) { x[n + 1] == max(x, na.rm = TRUE) },#
+            fill = NA, align = "center")#
+}#
+#
+detectSwingLows <- function(price, n = 5) {#
+  rollapply(price, width = 2 * n + 1,#
+            FUN = function(x) { x[n + 1] == min(x, na.rm = TRUE) },#
+            fill = NA, align = "center")#
+}#
+#
+# Function to process one day's data:#
+detectSwingsByDay <- function(day_data, n = 5) {#
+  # Ensure data is sorted by time#
+  day_data <- day_data %>% arrange(time)#
+  # Detect swing highs using the high prices#
+  day_data$swingHigh <- detectSwingHighs(day_data$high, n = n)#
+  # Detect swing lows using the low prices#
+  day_data$swingLow <- detectSwingLows(day_data$low, n = n)#
+  return(day_data)#
+}
+set.seed(123)  # For reproducibility#
+unique_days <- unique(df$date)#
+train_days <- sample(unique_days, round(length(unique_days) * 0.7))#
+df_train <- df %>% filter(date %in% train_days)
+class(df)
+df <- read_csv(file_path,#
+               col_names = c("time", "open", "high", "low", "close", "volume"),#
+               col_types = cols(#
+                 time = col_datetime(format = "%Y-%m-%d %H:%M:%S"),  # Update format if needed#
+                 open = col_double(),#
+                 high = col_double(),#
+                 low = col_double(),#
+                 close = col_double(),#
+                 volume = col_integer()#
+               ))
+library(readr)
+df <- read_csv(file_path,#
+               col_names = c("time", "open", "high", "low", "close", "volume"),#
+               col_types = cols(#
+                 time = col_datetime(format = "%Y-%m-%d %H:%M:%S"),  # Update format if needed#
+                 open = col_double(),#
+                 high = col_double(),#
+                 low = col_double(),#
+                 close = col_double(),#
+                 volume = col_integer()#
+               ))
+file_path <- "~/futuresdata/MES/MES_full_1min_continuous_ratio_adjusted.txt"
+df <- read_csv(file_path,#
+               col_names = c("time", "open", "high", "low", "close", "volume"),#
+               col_types = cols(#
+                 time = col_datetime(format = "%Y-%m-%d %H:%M:%S"),  # Update format if needed#
+                 open = col_double(),#
+                 high = col_double(),#
+                 low = col_double(),#
+                 close = col_double(),#
+                 volume = col_integer()#
+               ))
+library(dplyr)#
+library(lubridate)#
+library(ggplot2)#
+library(zoo)#
+library(TTR)#
+#
+# ----- Data Preparation -----#
+# Assume your data frame 'df' has the following columns:#
+# "time", "open", "high", "low", "close", "volume"#
+# Convert the time column to POSIXct (adjust the format if necessary) and create a date column.#
+df$time <- as.POSIXct(df$time)  #
+df$date <- as.Date(df$time)#
+#
+# ----- Calculate Indicators -----#
+# ADX: Average Directional Index using a 14-period lookback.#
+# Note: ADX() returns a matrix; we extract the "ADX" column.#
+df$ADX <- ADX(df[, c("high", "low", "close")], n = 14)[, "ADX"]#
+#
+# RSI: Relative Strength Index on the closing price.#
+df$RSI <- RSI(df$close, n = 14)#
+#
+# ATR: Average True Range using a 14-period lookback.#
+df$ATR <- ATR(df[, c("high", "low", "close")], n = 14)[, "atr"]#
+#
+# ----- Swing Point Detection Functions -----#
+# Define functions that detect swing highs and swing lows using a rolling window.#
+detectSwingHighs <- function(price, n = 5) {#
+  rollapply(price, width = 2 * n + 1,#
+            FUN = function(x) { x[n + 1] == max(x, na.rm = TRUE) },#
+            fill = NA, align = "center")#
+}#
+#
+detectSwingLows <- function(price, n = 5) {#
+  rollapply(price, width = 2 * n + 1,#
+            FUN = function(x) { x[n + 1] == min(x, na.rm = TRUE) },#
+            fill = NA, align = "center")#
+}#
+#
+# Function to process one day's data:#
+detectSwingsByDay <- function(day_data, n = 5) {#
+  # Ensure data is sorted by time#
+  day_data <- day_data %>% arrange(time)#
+  # Detect swing highs using the high prices#
+  day_data$swingHigh <- detectSwingHighs(day_data$high, n = n)#
+  # Detect swing lows using the low prices#
+  day_data$swingLow <- detectSwingLows(day_data$low, n = n)#
+  return(day_data)#
+}#
+#
+# ----- Split Data by Day (Optional) -----#
+# For example, randomly assign 70% of days to training.#
+set.seed(123)  # For reproducibility#
+unique_days <- unique(df$date)#
+train_days <- sample(unique_days, round(length(unique_days) * 0.7))#
+df_train <- df %>% filter(date %in% train_days)#
+# (You can similarly create a test set if needed.)#
+#
+# ----- Apply Swing Detection by Day -----#
+# Process each day in the training set to flag swing highs and lows.#
+df_train_swings <- df_train %>%#
+  group_by(date) %>%#
+  do(detectSwingsByDay(.)) %>%#
+  ungroup()#
+#
+# Extract the rows where a swing high or swing low was detected.#
+swing_high_rows <- df_train_swings %>% filter(swingHigh == TRUE)#
+swing_low_rows  <- df_train_swings %>% filter(swingLow == TRUE)#
+#
+# ----- Plot Density Distributions for ADX, RSI, and ATR -----#
+#
+# Plot for ADX:#
+p_ADX <- ggplot() +#
+  geom_density(data = swing_high_rows, aes(x = ADX, color = "Swing High"), adjust = 1.5) +#
+  geom_density(data = swing_low_rows, aes(x = ADX, color = "Swing Low"), adjust = 1.5) +#
+  labs(title = "ADX Distribution at Swing Points", x = "ADX", color = "Swing Type") +#
+  theme_minimal()#
+#
+# Plot for RSI:#
+p_RSI <- ggplot() +#
+  geom_density(data = swing_high_rows, aes(x = RSI, color = "Swing High"), adjust = 1.5) +#
+  geom_density(data = swing_low_rows, aes(x = RSI, color = "Swing Low"), adjust = 1.5) +#
+  labs(title = "RSI Distribution at Swing Points", x = "RSI", color = "Swing Type") +#
+  theme_minimal()#
+#
+# Plot for ATR:#
+p_ATR <- ggplot() +#
+  geom_density(data = swing_high_rows, aes(x = ATR, color = "Swing High"), adjust = 1.5) +#
+  geom_density(data = swing_low_rows, aes(x = ATR, color = "Swing Low"), adjust = 1.5) +#
+  labs(title = "ATR Distribution at Swing Points", x = "ATR", color = "Swing Type") +#
+  theme_minimal()#
+#
+# Print the plots#
+print(p_ADX)
+print(p_RSI)
+print(p_ATR)
+print(p_ADX)
+library(dplyr)#
+library(ggplot2)#
+library(tidyr)#
+#
+# ----- Assume df_train_swings exists -----#
+# For example, df_train_swings might have been created earlier via:#
+# df_train_swings <- df_train %>%#
+#    group_by(date) %>%#
+#    do(detectSwingsByDay(.)) %>%#
+#    ungroup()#
+#
+# ----- 1. Count the Number of Swing Highs and Lows per Day -----#
+swing_counts <- df_train_swings %>%#
+  group_by(date) %>%#
+  summarise(#
+    num_high = sum(swingHigh, na.rm = TRUE),#
+    num_low  = sum(swingLow, na.rm = TRUE)#
+  )#
+#
+# Convert from wide to long format for plotting with ggplot2#
+swing_counts_long <- swing_counts %>%#
+  pivot_longer(cols = c(num_high, num_low),#
+               names_to = "swing_type",#
+               values_to = "count")
+swing_counts_long
+p_time_series <- ggplot(swing_counts_long, aes(x = date, y = count, color = swing_type)) +#
+  geom_line(size = 1) +#
+  labs(title = "Daily Number of Swing Highs and Lows",#
+       x = "Date",#
+       y = "Count",#
+       color = "Swing Type") +#
+  theme_minimal()#
+#
+print(p_time_series)
+p_histogram <- ggplot(swing_counts_long, aes(x = count, fill = swing_type)) +#
+  geom_histogram(alpha = 0.6, position = "identity", bins = 20) +#
+  labs(title = "Distribution of Daily Swing Point Counts",#
+       x = "Number of Swing Points Detected in a Day",#
+       y = "Frequency",#
+       fill = "Swing Type") +#
+  theme_minimal()#
+#
+print(p_histogram)
+df_train_swings <- df_train %>%#
+  group_by(date) %>%#
+  do(detectSwingsByDay(., 20)) %>%#
+  ungroup()
+swing_counts <- df_train_swings %>%#
+  group_by(date) %>%#
+  summarise(#
+    num_high = sum(swingHigh, na.rm = TRUE),#
+    num_low  = sum(swingLow, na.rm = TRUE)#
+  )#
+#
+# Convert from wide to long format for plotting with ggplot2#
+swing_counts_long <- swing_counts %>%#
+  pivot_longer(cols = c(num_high, num_low),#
+               names_to = "swing_type",#
+               values_to = "count")
+p_histogram <- ggplot(swing_counts_long, aes(x = count, fill = swing_type)) +#
+  geom_histogram(alpha = 0.6, position = "identity", bins = 20) +#
+  labs(title = "Distribution of Daily Swing Point Counts",#
+       x = "Number of Swing Points Detected in a Day",#
+       y = "Frequency",#
+       fill = "Swing Type") +#
+  theme_minimal()#
+#
+print(p_histogram)
+p_histogram <- ggplot(swing_counts_long, aes(x = count, fill = swing_type)) +#
+  geom_histogram(alpha = 0.6, position = "identity", bins = 20) +#
+  labs(title = "Distribution of Daily Swing Point Counts",#
+       x = "Number of Swing Points Detected in a Day",#
+       y = "Frequency",#
+       fill = "Swing Type") +#
+  theme_minimal()#
+#
+print(p_histogram)
+df_train_swings <- df_train %>%#
+  group_by(date) %>%#
+  do(detectSwingsByDay(., 40)) %>%#
+  ungroup()
+swing_counts <- df_train_swings %>%#
+  group_by(date) %>%#
+  summarise(#
+    num_high = sum(swingHigh, na.rm = TRUE),#
+    num_low  = sum(swingLow, na.rm = TRUE)#
+  )#
+#
+# Convert from wide to long format for plotting with ggplot2#
+swing_counts_long <- swing_counts %>%#
+  pivot_longer(cols = c(num_high, num_low),#
+               names_to = "swing_type",#
+               values_to = "count")#
+#
+# ----- 2. Time-Series Plot: Daily Swing Counts as a Function of Day -----#
+p_time_series <- ggplot(swing_counts_long, aes(x = date, y = count, color = swing_type)) +#
+  geom_line(size = 1) +#
+  labs(title = "Daily Number of Swing Highs and Lows",#
+       x = "Date",#
+       y = "Count",#
+       color = "Swing Type") +#
+  theme_minimal()#
+#
+print(p_time_series)#
+#
+# ----- 3. Histogram: Distribution of Daily Swing Counts for Highs vs. Lows -----#
+p_histogram <- ggplot(swing_counts_long, aes(x = count, fill = swing_type)) +#
+  geom_histogram(alpha = 0.6, position = "identity", bins = 20) +#
+  labs(title = "Distribution of Daily Swing Point Counts",#
+       x = "Number of Swing Points Detected in a Day",#
+       y = "Frequency",#
+       fill = "Swing Type") +#
+  theme_minimal()#
+#
+print(p_histogram)
+detectBreakout <- function(day_data, baseline_minutes = 60, breakout_threshold = 0.005) {#
+  # day_data: data for a single day (must contain a POSIXct 'time' column and OHLC prices)#
+  # baseline_minutes: length of the baseline period (in minutes) to compute support/resistance#
+  # breakout_threshold: the percentage by which price must exceed support/resistance to count as a breakout#
+  # Ensure the data is sorted by time#
+  day_data <- day_data[order(day_data$time), ]#
+  # Define the baseline period: from the first bar until (first bar + baseline_minutes)#
+  start_time <- min(day_data$time)#
+  baseline_end_time <- start_time + minutes(baseline_minutes)#
+  # Subset the data to the baseline period#
+  baseline_data <- day_data %>% filter(time <= baseline_end_time)#
+  # Compute the baseline support and resistance from the baseline period#
+  support <- min(baseline_data$low, na.rm = TRUE)#
+  resistance <- max(baseline_data$high, na.rm = TRUE)#
+  # Initialize a new column for breakout signals#
+  day_data$breakout <- NA#
+  # For bars after the baseline period, check for breakout conditions:#
+  # Upward breakout: close > resistance * (1 + breakout_threshold)#
+  day_data$breakout[day_data$time > baseline_end_time & #
+                      day_data$close > resistance * (1 + breakout_threshold)] <- "up"#
+  # Downward breakout: close < support * (1 - breakout_threshold)#
+  day_data$breakout[day_data$time > baseline_end_time & #
+                      day_data$close < support * (1 - breakout_threshold)] <- "down"#
+  # (Optional) Add columns for support and resistance for reference#
+  day_data$support <- support#
+  day_data$resistance <- resistance#
+  return(day_data)#
+}#
+#
+# ----- Example Application: Detecting Breakouts Per Day -----#
+#
+# Suppose your data frame 'df' has at least these columns:#
+# "time", "open", "high", "low", "close", "volume"#
+# Convert the time column to POSIXct and create a date column:#
+df$time <- as.POSIXct(df$time)  # Adjust format as needed#
+df$date <- as.Date(df$time)#
+#
+# Now, process each day separately using dplyr’s group_by and do():#
+df_breakout <- df %>%#
+  group_by(date) %>%#
+  do(detectBreakout(., baseline_minutes = 60, breakout_threshold = 0.005)) %>%#
+  ungroup()#
+#
+# ----- Examine the Detected Breakout Events -----#
+# Filter to see which bars (if any) were flagged as breakout events:#
+breakout_events <- df_breakout %>% filter(!is.na(breakout))#
+print(breakout_events)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "blue", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "blue", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-11", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "blue", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "blue", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-01", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "blue", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "blue", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-02", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-11", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-11", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-10", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-08", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-07", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-06", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-05", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-04", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-03", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-02", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-02-01", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-31", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-39", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-30", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-29", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-28", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-27\", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-27", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-26", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-25", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-24", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-23", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-22", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-21", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-20", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-19", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-18", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-17", df_breakout)
+plotBreakoutDay <- function(selected_day, breakout_data) {#
+  # Ensure selected_day is a Date object#
+  selected_day <- as.Date(selected_day)#
+  # Filter the data for the selected day#
+  day_data <- breakout_data %>% filter(date == selected_day)#
+  if(nrow(day_data) == 0) {#
+    stop("No data found for the selected day.")#
+  }#
+  # Base plot: plot close price as a line chart#
+  p <- ggplot(day_data, aes(x = time, y = close)) +#
+    geom_line(color = "black", size = 0.8) +#
+    labs(title = paste("Price Action and Breakout on", selected_day),#
+         x = "Time",#
+         y = "Close Price") +#
+    theme_minimal()#
+  # Overlay breakout points (if any)#
+  breakout_points <- day_data %>% filter(!is.na(breakout))#
+  if(nrow(breakout_points) > 0) {#
+    p <- p + #
+      geom_point(data = breakout_points, #
+                 aes(x = time, y = close, shape = breakout, color = breakout), #
+                 size = 3) +#
+      scale_shape_manual(values = c("up" = 24, "down" = 25)) +#
+      scale_color_manual(values = c("up" = "green", "down" = "red"))#
+  }#
+  # Optionally, add horizontal lines for support and resistance (if computed)#
+  # We assume that support/resistance values are constant for the day (or nearly so)#
+  if("support" %in% names(day_data) && "resistance" %in% names(day_data)) {#
+    supp <- unique(day_data$support[!is.na(day_data$support)])#
+    res  <- unique(day_data$resistance[!is.na(day_data$resistance)])#
+    if(length(supp) > 0) {#
+      p <- p + geom_hline(yintercept = supp[1], linetype = "dashed", color = "green", size = 0.8)#
+    }#
+    if(length(res) > 0) {#
+      p <- p + geom_hline(yintercept = res[1], linetype = "dashed", color = "red", size = 0.8)#
+    }#
+  }#
+  print(p)#
+}#
+#
+# ---- Example Usage ----#
+# Assuming you have a data frame `df_breakout` that was created by your breakout detection process.#
+# This data frame should include at least the columns: time (POSIXct), close, date (Date), breakout, support, and resistance.#
+##
+# To plot a specific day (e.g., "2025-02-11"), run:#
+##
+plotBreakoutDay("2024-01-16", df_breakout)
+pwd
+pwd()
+getwd()
+setwd(~/tadpole-data)
+setwd(''~/tadpole-data')
+setwd('~/tadpole-data')
+getwd()
+renv::init()
+renv::init()
+restart()
+renv::install('qiime2R')
+renv::install("jbisanz/qiime2R")
+library(qiime2R)
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "jaccard_distance_matrix.qza")
+jaccard_artifact <- read_qza(qza_path)
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "jaccard_distance_matrix.qza")
+qza_path
+Sys.getenv("BASE_DATA_PATH")
