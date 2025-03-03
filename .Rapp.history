@@ -1,77 +1,1100 @@
 setwd('tadpole-data')
 # Load required libraries#
 library(qiime2R)#
+library(ggplot2)#
+library(lme4)#
+library(lmerTest)#
 library(dplyr)#
-library(stringr)#
 #
-# Set the path to your taxonomy.qza file (adjust the path as necessary)#
-tax_qza_path <- "~/data/Taxa/taxonomy.qza"#
+# Load the QIIME 2 artifact containing Shannon entropy#
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "shannon_vector.qza")#
+shannon_vector <- read_qza(qza_path)#
 #
-# Load the taxonomy artifact#
-taxonomy_artifact <- read_qza(tax_qza_path)#
+# Load your metadata CSV file#
+csv_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "Metadata for microbiota analysis.xlsx - PES MPF paper metadata.csv")#
+my_data <- read.csv(csv_path, header = TRUE, stringsAsFactors = FALSE)#
 #
-# Check the structure of the artifact to see what components it has#
-str(taxonomy_artifact)#
+# Create a full sample ID to match those in the shannon_vector artifact#
+my_data$SampleID_full <- sprintf("KA%03d", as.numeric(my_data$Sample.ID))#
 #
-# Typically, taxonomy assignments are stored in the 'data' element#
-# Take a look at the first few rows#
-head(taxonomy_artifact$data)#
+# Convert the row names of the shannon data to a column for merging#
+shannon_df <- shannon_vector$data#
+shannon_df$SampleID_full <- rownames(shannon_df)#
 #
-# Convert the data to a data frame (if it's not already)#
-taxonomy_df <- as.data.frame(taxonomy_artifact$data)#
-print(head(taxonomy_df))#
+# Merge the shannon_entropy data into the metadata using SampleID_full#
+my_data <- merge(my_data, shannon_df[, c("SampleID_full", "shannon_entropy")],#
+                 by = "SampleID_full", all.x = TRUE)#
 #
-# Summary statistics of the taxonomy data#
-summary(taxonomy_df)#
+# View the first few rows of the merged data#
+head(my_data)#
 #
-# Often, taxonomy information is stored in a column (e.g., "Taxon") with levels separated by semicolons.#
-# You might want to extract a specific taxonomic rank (e.g., genus). Here is one way to extract the last rank:#
-taxonomy_df$Genus <- sapply(taxonomy_df$Taxon, function(x) {#
-  # Split the taxonomy string by semicolon and trim whitespace#
-  parts <- str_trim(unlist(str_split(x, pattern = ";")))#
-  # Return the last non-empty element#
-  tail(parts[parts != ""], n = 1)#
-})#
+# ------------------------------#
+# Prepare the data for modeling#
+# ------------------------------#
 #
-# View a frequency table of the extracted genus assignments#
-table(taxonomy_df$Genus)
+# Convert treatment variables to factors.#
+# Replace these column names with the actual names in your CSV if they differ.#
+my_data$MicroplasticLength <- factor(my_data$MicroplasticLength, levels = c("S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$MicroplasticConcentration, levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite, levels = c("NP", "P"))#
+#
+# (Optional) If you have a grouping variable (e.g., repeated measures, subjects, or blocks), ensure it is a factor.#
+# Uncomment and adjust the next line if applicable:#
+# my_data$Subject <- factor(my_data$Subject)#
+#
+# ------------------------------#
+# Fit the linear mixed model#
+# ------------------------------#
+#
+# If you have a random effect (e.g., Subject), use lmer(). Otherwise, you can use lm() for a fixed-effects model.#
+if("Subject" %in% names(my_data)) {#
+  model <- lmer(shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite + (1 | Subject),#
+                data = my_data)#
+} else {#
+  model <- lm(shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+              data = my_data)#
+}#
+#
+# Output the summary of the model to view main and interactive effects#
+summary(model)#
+#
+# (Optional) Run an ANOVA on the model for further insight into the significance of effects#
+if("Subject" %in% names(my_data)) {#
+  anova(model)#
+} else {#
+  anova(model)#
+}#
+#
+# ------------------------------#
+# Diagnostic plots (optional)#
+# ------------------------------#
+#
+# For a quick check of residuals and model fit#
+par(mfrow = c(2, 2))#
+plot(model)
+getwd()
+renv::install('lmerTest')
+getwd()
+library(qiime2R)#
+library(ggplot2)#
+library(lme4)#
+library(lmerTest)#
+library(dplyr)
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "shannon_vector.qza")#
+shannon_vector <- read_qza(qza_path)
+Sys.getenv("BASE_DATA_PATH")
+readRenviron("~/.Renviron")
+readRenviron(".Renviron")
+Sys.getenv("BASE_DATA_PATH")
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "shannon_vector.qza")#
+shannon_vector <- read_qza(qza_path)
+csv_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "Metadata for microbiota analysis.xlsx - PES MPF paper metadata.csv")#
+my_data <- read.csv(csv_path, header = TRUE, stringsAsFactors = FALSE)
+# Create a full sample ID to match those in the shannon_vector artifact#
+my_data$SampleID_full <- sprintf("KA%03d", as.numeric(my_data$Sample.ID))#
+#
+# Convert the row names of the shannon data to a column for merging#
+shannon_df <- shannon_vector$data#
+shannon_df$SampleID_full <- rownames(shannon_df)#
+#
+# Merge the shannon_entropy data into the metadata using SampleID_full#
+my_data <- merge(my_data, shannon_df[, c("SampleID_full", "shannon_entropy")],#
+                 by = "SampleID_full", all.x = TRUE)#
+#
+# View the first few rows of the merged data#
+head(my_data)
+my_data$MicroplasticLength <- factor(my_data$MicroplasticLength, levels = c("S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$MicroplasticConcentration, levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite, levels = c("NP", "P"))
+colnames(my_data)
+my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c("S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))
+head(my_data)
+dim(my_data)
+unique(my_data$Sample.ID)
+length(unique(my_data$Sample.ID))
+model <- lm(shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+              data = my_data)
+model
+par(mfrow = c(2, 2))#
+plot(model)
+anova(model)
+qqnorm(model)
+qqnorm(resid(model))
+qqline(resid(model), col = "red")
+qqnorm(resid(model))
+qqline(resid(model), col = "red")
+# Calculate the maximum value (ignoring NAs)#
+max_val <- max(my_data$shannon_entropy, na.rm = TRUE)#
+#
+# Reflect the data (adding 1 to avoid log(0))#
+my_data$shannon_reflected <- max_val - my_data$shannon_entropy + 1#
+#
+# Apply a log transformation#
+my_data$log_shannon_reflected <- log(my_data$shannon_reflected)#
+#
+# Fit a linear model using the transformed response#
+model_trans <- lm(log_shannon_reflected ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+                  data = my_data)
+qqnorm(resid(model_trans))#
+qqline(resid(model_trans), col = "red")
+model_poisson <- glm(shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+                     family = poisson(link = "log"),#
+                     data = my_data)#
+summary(model_poisson)
+library(DHARMa)
+renv::install('DHARMa')
+library(DHARMa)
+library(gamlss)
+renv::install('gamlss')
+library(gamlss)#
+#
+model_gamlss <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = NO,  # NO: Normal distribution#
+  data = my_data#
+)#
+#
+summary(model_gamlss)
+print(my_data)
+# Convert treatment variables to factors.#
+# Replace these column names with the actual names in your CSV if they differ.#
+my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c("0", "S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))#
+#
+# (Optional) If you have a grouping variable (e.g., repeated measures, subjects, or blocks), ensure it is a factor.#
+# Uncomment and adjust the next line if applicable:#
+# my_data$Subject <- factor(my_data$Subject)#
+#
+# ------------------------------#
+# Fit the linear mixed model#
+# ------------------------------#
+model <- lm(shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+              data = my_data)#
+#
+# Output the summary of the model to view main and interactive effects#
+summary(model)#
+anova(model)#
+# ------------------------------#
+# Diagnostic plots#
+# ------------------------------#
+#
+# For a quick check of residuals and model fit#
+par(mfrow = c(2, 2))#
+plot(model)
+# Calculate the maximum value (ignoring NAs)#
+max_val <- max(my_data$shannon_entropy, na.rm = TRUE)#
+#
+# Reflect the data (adding 1 to avoid log(0))#
+my_data$shannon_reflected <- max_val - my_data$shannon_entropy + 1#
+#
+# Apply a log transformation#
+my_data$log_shannon_reflected <- log(my_data$shannon_reflected)#
+#
+# Fit a linear model using the transformed response#
+model_trans <- lm(log_shannon_reflected ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+                  data = my_data)#
+#
+# Check the QQ plot of the residuals#
+qqnorm(resid(model_trans))#
+qqline(resid(model_trans), col = "red")
+model_poisson <- glm(shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+                     family = poisson(link = "log"),#
+                     data = my_data)#
+summary(model_poisson)
+model_gamlss <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = NO,  # NO: Normal distribution#
+  data = my_data#
+)#
+#
+summary(model_gamlss)
+print(my_data)
+model_gamlss <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = NO,  # NO: Normal distribution#
+  data = na.onit(my_data)#
+)#
+#
+summary(model_gamlss)
+model_gamlss <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = NO,  # NO: Normal distribution#
+  data = na.omit(my_data)#
+)#
+#
+summary(model_gamlss)
+library(DHARMa)#
+simulationOutput <- simulateResiduals(fittedModel = model_gamlss)  # your fitted model#
+plot(simulationOutput)
+# Extract residuals from the model#
+res <- residuals(model_gamlss)#
+#
+# Create a basic Q-Q plot of the residuals#
+qqnorm(res)#
+qqline(res, col = "red")
+wp(model_gamlss, ylim.all = c(-3, 3))
+wp(model_gamlss, ylim.all = c(-5, 5))
+wp(model_gamlss)
+plot(model_gamlss)
+model_gamlss_bcpe <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you can also specify nu and tau formulas if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCPE,#
+  data = my_data#
+)#
+#
+summary(model_gamlss_bcpe)
+model_gamlss_bcpe <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you can also specify nu and tau formulas if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCPE,#
+  data = na.omit(my_data)#
+)#
+#
+summary(model_gamlss_bcpe)
+plot(model_gamlss_bcpe)
+wp
+wp(model_gamlss)
+wp(model_gamlss_bpce)
+wp(model_gamlss_bcpe)
+wp(model_gamlss_bcpe)
+model_gamlss_bct<- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you can also specify nu and tau formulas if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,#
+  data = na.omit(my_data)#
+)#
+#
+summary(model_gamlss_bct)#
+plot(model_gamlss_bct)
+wp(model_gamlss_bct)
+library(gamlss)#
+#
+# Fit a GAMLSS model with a normal distribution (NO) where both mu and sigma are modeled#
+model_gamlss <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = NO,  # Using the normal (NO) distribution; sigma here is the standard deviation#
+  data = my_data#
+)#
+#
+# View a summary of the model to see estimates for both mu and sigma parameters#
+summary(model_gamlss)#
+#
+# Plot the diagnostic plots, including the worm plot#
+plot(model_gamlss)#
+wp(model_gamlss, ylim.all = c(-3, 3))
+wp(model_gamlss)
+wp(model_gamlss)
+plot(model_gamlss)
+plot(model_gamlss_bce)
+plot(model_gamlss_bct)
+summary(model_gamlss_bct)
+summary(model_gamlss_bpce)
+summary(model_gamlss_bcpe)
+wp(model_gamlss_bcpe)
+wp(model_gamlss_bct)
+plot(model_gamlss_bct)
+model_bct <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you could also try modeling nu and tau if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,  # Using the Box-Cox t distribution#
+  data = my_data#
+)#
+#
+# Check model summary to inspect estimated parameters for mu, sigma, nu, and tau#
+summary(model_bct)#
+#
+# Plot diagnostic plots including the worm plot#
+plot(model_bct)
+# Fit a BCT model#
+model_bct <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you could also try modeling nu and tau if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,  # Using the Box-Cox t distribution#
+  data = na.omit(my_data)#
+)#
+#
+# Check model summary to inspect estimated parameters for mu, sigma, nu, and tau#
+summary(model_bct)
+plot(model_bct)
+wp(model_bct)
+dim(my_data)
+n_complete <- sum(complete.cases(my_data[, c("shannon_entropy", "MicroplasticLength", "MicroplasticConcentration", "Parasite")]))#
+print(n_complete)
+# Check for missing values in the entire dataset#
+missing_summary <- sapply(my_data, function(x) sum(is.na(x)))#
+print(missing_summary)
+my_data$Parasite..P.parasite.NP.non.parasite.
+my_data$shannon_entropy
+my_data[is.na(my_data$shannon_entropy),]
+my_data[is.na(my_data$shannon_entropy),]
+my_data[is.na(my_data$shannon_entropy),]
+my_data[!is.na(my_data$shannon_entropy),]
+my_data <- my_data[!is.na(my_data$shannon_entropy),]
+my_data
+dim(my_data)
+# Fit a BCT model#
+model_bct <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you could also try modeling nu and tau if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,  # Using the Box-Cox t distribution#
+  data = my_data#
+)#
+#
+# Check model summary to inspect estimated parameters for mu, sigma, nu, and tau#
+summary(model_bct)
+colnames(ny_data)
+colnames(my_data)
+dim(my_data)
+complete_cases <- complete.cases(my_data[, c("shannon_entropy", "MicroplasticLength", "MicroplasticConcentration", "Parasite")])#
+sum(complete_cases)
+table(my_data$MicroplasticLength, useNA = "ifany")
+table(my_data$MicroplasticLength, useNA = "ifany")#
+table(my_data$MicroplasticConcentration, useNA = "ifany")#
+table(my_data$Parasite, useNA = "ifany")
+table(my_data$MicroplasticLength, useNA = "ifany")#
+table(my_data$MicroplasticConcentration, useNA = "ifany")#
+table(my_data$Parasite, useNA = "ifany")
+complete_cases <- complete.cases(my_data[, c("shannon_entropy", "MicroplasticLength", "MicroplasticConcentration", "Parasite")])#
+sum(complete_cases)
+# Create a new data frame with only the necessary columns#
+model_data <- my_data[, c("shannon_entropy", "MicroplasticLength", "MicroplasticConcentration", "Parasite")]#
+#
+# Check the dimensions and number of complete cases#
+dim(model_data)  # should show 98 rows if filtering already kept 98 rows#
+sum(complete.cases(model_data))  # should ideally be 98#
+#
+# Fit the model using the pared-down data frame#
+library(gamlss)#
+model_gamlss <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = NO,  # or whichever family you're using#
+  data = model_data#
+)#
+#
+summary(model_gamlss)
+model_data <- my_data[, c("shannon_entropy", "MicroplasticLength", "MicroplasticConcentration", "Parasite")]#
+#
+# Check the dimensions and number of complete cases#
+dim(model_data)  # should show 98 rows if filtering already kept 98 rows#
+sum(complete.cases(model_data))  # should ideally be 98#
+#
+# Fit the model using the pared-down data frame#
+library(gamlss)#
+model_bct <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you could also try modeling nu and tau if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,  # Using the Box-Cox t distribution#
+  data = model_data#
+)#
+#
+summary(model_gamlss_bct)
+range(model_data$shannon_entropy, na.rm = TRUE)
+range(model_data$shannon_entropy)
+model_data$shannon_entropy
+summary(model_bct)
+table(model_data$MicroplasticConcentration)#
+levels(model_data$MicroplasticConcentration)
+levels(model_data$MicroplasticConcentration)#
+table(model_data$MicroplasticConcentration)
+model_bct <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you could also try modeling nu and tau if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,  # Using the Box-Cox t distribution#
+  data = model_data#
+)#
+#
+summary(model_bct)
+wp(model_bct)
+model_bct <- gamlss(#
+  # shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  shannon_entropy ~ MicroplasticLength + MicroplasticConcentration + Parasite,#
+  # sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # Optionally, you could also try modeling nu and tau if you suspect these parameters vary with predictors:#
+  # nu.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  # tau.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,  # Using the Box-Cox t distribution#
+  data = model_data#
+)#
+#
+summary(model_bct)
+model <- lm(shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+              data = my_data)#
+#
+# Output the summary of the model to view main and interactive effects#
+summary(model)
+my_data$MicroplasticPresence <- ifelse(my_data$MicroplasticConcentration == "0", "Absent", "Present")#
+my_data$MicroplasticPresence <- factor(my_data$MicroplasticPresence, levels = c("Absent", "Present"))#
+#
+# 2. For the overall model (controls vs. treatments), create a pared-down data frame#
+model_data_overall <- my_data[, c("shannon_entropy", "MicroplasticPresence", "Parasite")]#
+#
+# Check that the data has the expected dimensions and levels#
+table(model_data_overall$MicroplasticPresence)#
+table(model_data_overall$Parasite)#
+#
+# 3. Fit the overall gamlss BCT model (modeling only mu, with sigma, nu, and tau as intercept-only)#
+model_overall <- gamlss(#
+  shannon_entropy ~ MicroplasticPresence * Parasite,#
+  family = BCT,#
+  data = model_data_overall,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_overall)#
+plot(model_overall)
+wp(model_overall)
+treated_data <- subset(my_data, MicroplasticPresence == "Present")#
+#
+# Create a new data frame that only contains the necessary columns for the treated samples model.#
+treated_data <- treated_data[, c("shannon_entropy", "MicroplasticLength", "MicroplasticConcentration", "Parasite")]#
+#
+# Drop any unused factor levels.#
+treated_data$MicroplasticLength <- droplevels(treated_data$MicroplasticLength)#
+treated_data$MicroplasticConcentration <- droplevels(treated_data$MicroplasticConcentration)#
+treated_data$Parasite <- droplevels(treated_data$Parasite)#
+#
+# Check counts to confirm that you have the expected levels for the treatment factors.#
+table(treated_data$MicroplasticConcentration)#
+table(treated_data$MicroplasticLength)#
+#
+# 5. Fit the gamlss BCT model for the treated samples (modeling only mu)#
+model_treated <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,#
+  data = treated_data,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_treated)#
+plot(model_treated)
+library(ggplot2)#
+library(ggeffects)  # For creating predicted effects plots#
+#
+# Boxplot and jitter of raw data#
+p1 <- ggplot(model_data_overall, aes(x = MicroplasticPresence, y = shannon_entropy, color = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +#
+  geom_jitter(width = 0.15, alpha = 0.8) +#
+  labs(title = "Shannon Entropy by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence", y = "Shannon Entropy") +#
+  theme_minimal()#
+#
+p1
+renv::install('ggeffects')
+library(ggplot2)#
+library(ggeffects)  # For creating predicted effects plots#
+#
+# Boxplot and jitter of raw data#
+p1 <- ggplot(model_data_overall, aes(x = MicroplasticPresence, y = shannon_entropy, color = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +#
+  geom_jitter(width = 0.15, alpha = 0.8) +#
+  labs(title = "Shannon Entropy by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence", y = "Shannon Entropy") +#
+  theme_minimal()#
+#
+p1
+library(ggplot2)#
+library(ggeffects)  # For creating predicted effects plots#
+#
+# Boxplot and jitter of raw data#
+p1 <- ggplot(model_data_overall, aes(x = MicroplasticPresence, y = shannon_entropy, color = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +#
+  geom_jitter(width = 0.15, alpha = 0.8) +#
+  labs(title = "Shannon Entropy by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence", y = "Shannon Entropy") +#
+  theme_minimal()#
+#
+p1
+overall_pred <- ggpredict(model_overall, terms = c("MicroplasticPresence", "Parasite"))#
+p2 <- plot(overall_pred) +#
+  labs(title = "Predicted Shannon Entropy (Overall Model)",#
+       x = "Microplastic Presence", y = "Predicted Shannon Entropy") +#
+  theme_minimal()#
+#
+p2
+p3 <- ggplot(treated_data, aes(x = MicroplasticConcentration, y = shannon_entropy, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(width = 0.8)) +#
+  geom_jitter(aes(color = MicroplasticLength), width = 0.15, alpha = 0.8, position = position_dodge(width = 0.8)) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Shannon Entropy in Treated Samples",#
+       x = "Microplastic Concentration", y = "Shannon Entropy") +#
+  theme_minimal()#
+#
+p3
+treated_data
+p3 <- ggplot(treated_data, aes(x = MicroplasticConcentration, y = shannon_entropy, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(width = 0.8)) +#
+  geom_jitter(aes(color = MicroplasticLength), width = 0.15, alpha = 0.8, position = position_dodge(width = 0.8)) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Shannon Entropy in Treated Samples",#
+       x = "Microplastic Concentration", y = "Shannon Entropy") +#
+  theme_minimal()#
+#
+p3
+p3 <- ggplot(treated_data, aes(x = MicroplasticConcentration, y = shannon_entropy, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(width = 0.8)) +#
+  geom_jitter(aes(color = MicroplasticLength), alpha = 0.8, position = position_dodge(width = 0.8)) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Shannon Entropy in Treated Samples",#
+       x = "Microplastic Concentration", y = "Shannon Entropy") +#
+  theme_minimal()#
+#
+p3
+summary(model_overall)
+summary(model_treated)
+model_overall_sigma <- gamlss(#
+  shannon_entropy ~ MicroplasticPresence * Parasite,#
+  sigma.formula = ~ MicroplasticPresence * Parasite,#
+  family = BCT,#
+  data = model_data_overall,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_overall_sigma)
+summary(model_overall_sigma)
+model_treated_sigma <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,#
+  data = treated_data,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_treated_sigma)#
+#Global Deviance:     99.53428 #
+#            AIC:     121.5343 #
+#            SBC:     147.5982 #
+plot(model_treated_sigma)#
+wp(model_treated_sigma)
+model_treated_sigma <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength + MicroplasticConcentration + Parasite,#
+  family = BCT,#
+  data = treated_data,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_treated_sigma)
+model_treated_sigma <- gamlss(#
+  shannon_entropy ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength + MicroplasticConcentration + Parasite,#
+  family = BCT,#
+  data = treated_data,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_treated_sigma)
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "faith_pd_vector.qza")
+faith_pd_vector <- read_qza(qza_path)
+faith_pd_vector$data
 # Load required libraries#
 library(qiime2R)#
+library(ggplot2)#
+library(lme4)#
+library(gamlss)#
+library(lmerTest)#
 library(dplyr)#
-library(stringr)#
 #
-# Set the path to your taxonomy.qza file (adjust the path as necessary)#
-tax_qza_path <- "./data/Taxa/taxonomy.qza"#
+# Read in environment variables#
+readRenviron(".Renviron")#
 #
-# Load the taxonomy artifact#
-taxonomy_artifact <- read_qza(tax_qza_path)#
+# ------------------------------#
+# Load and merge Faith PD data#
+# ------------------------------#
 #
-# Check the structure of the artifact to see what components it has#
-str(taxonomy_artifact)#
+# Load the QIIME 2 artifact containing Faith PD data#
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "faith_pd_vector.qza")#
+faith_pd_vector <- read_qza(qza_path)#
 #
-# Typically, taxonomy assignments are stored in the 'data' element#
-# Take a look at the first few rows#
-head(taxonomy_artifact$data)#
+# Look at the data format; it should have two columns (V1 and V2)#
+head(faith_pd_vector$data)#
 #
-# Convert the data to a data frame (if it's not already)#
-taxonomy_df <- as.data.frame(taxonomy_artifact$data)#
-print(head(taxonomy_df))#
+# Rename the columns for clarity: V1 becomes SampleID_full, V2 is the Faith PD measure#
+faith_pd_df <- faith_pd_vector$data#
+colnames(faith_pd_df) <- c("SampleID_full", "faith_pd")#
 #
-# Summary statistics of the taxonomy data#
-summary(taxonomy_df)#
+# Merge the Faith PD data into your metadata (my_data) on SampleID_full#
+# (Assuming my_data already has a SampleID_full column from your previous code)#
+my_data <- merge(my_data, faith_pd_df, by = "SampleID_full", all.x = TRUE)#
+head(my_data)#
 #
-# Often, taxonomy information is stored in a column (e.g., "Taxon") with levels separated by semicolons.#
-# You might want to extract a specific taxonomic rank (e.g., genus). Here is one way to extract the last rank:#
-taxonomy_df$Genus <- sapply(taxonomy_df$Taxon, function(x) {#
-  # Split the taxonomy string by semicolon and trim whitespace#
-  parts <- str_trim(unlist(str_split(x, pattern = ";")))#
-  # Return the last non-empty element#
-  tail(parts[parts != ""], n = 1)#
-})#
+# Filter out any rows missing Faith PD data#
+my_data <- my_data[!is.na(my_data$faith_pd),]#
 #
-# View a frequency table of the extracted genus assignments#
-table(taxonomy_df$Genus)
-head(taxonomy_artifact$data)
-tail(taxonomy_artifact$data)
-str(taxonomy_artifact)
-summary(taxonomy_df)
+# ------------------------------#
+# Prepare treatment variables (if not already done)#
+# ------------------------------#
+#
+# Convert treatment variables to factors using the appropriate columns from your metadata.#
+my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c("0", "S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))#
+#
+# Create a binary variable for microplastic presence:#
+my_data$MicroplasticPresence <- ifelse(my_data$MicroplasticConcentration == "0", "Absent", "Present")#
+my_data$MicroplasticPresence <- factor(my_data$MicroplasticPresence, levels = c("Absent", "Present"))#
+#
+# ------------------------------#
+# Overall Model: Controls vs. Treatments for Faith PD#
+# ------------------------------#
+#
+# Create a pared-down data frame with only the necessary columns for the overall model#
+model_data_overall_pd <- my_data[, c("faith_pd", "MicroplasticPresence", "Parasite")]#
+#
+# Check the counts to be sure#
+table(model_data_overall_pd$MicroplasticPresence)#
+table(model_data_overall_pd$Parasite)#
+#
+# Fit the overall gamlss BCT model (modeling only μ; sigma, nu, and tau are intercept-only)#
+model_overall_pd <- gamlss(#
+  faith_pd ~ MicroplasticPresence * Parasite,#
+  family = BCT,#
+  data = model_data_overall_pd,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_overall_pd)
+plot(model_overall_pd)
+wp(model_overall_pd)
+treated_data_pd <- subset(my_data, MicroplasticPresence == "Present")#
+#
+# Create a pared-down data frame for treated samples#
+treated_data_pd <- treated_data_pd[, c("faith_pd", "MicroplasticLength", "MicroplasticConcentration", "Parasite")]#
+#
+# Drop any unused factor levels#
+treated_data_pd$MicroplasticLength <- droplevels(treated_data_pd$MicroplasticLength)#
+treated_data_pd$MicroplasticConcentration <- droplevels(treated_data_pd$MicroplasticConcentration)#
+treated_data_pd$Parasite <- droplevels(treated_data_pd$Parasite)#
+#
+# Check the counts to ensure the expected levels are present#
+table(treated_data_pd$MicroplasticConcentration)#
+table(treated_data_pd$MicroplasticLength)#
+#
+# Fit the gamlss BCT model for treated samples (modeling only μ)#
+model_treated_pd <- gamlss(#
+  faith_pd ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,#
+  data = treated_data_pd,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_treated_pd)#
+plot(model_treated_pd)#
+wp(model_treated_pd, ylim.all = c(-3, 3))
+library(ggplot2)#
+library(ggeffects)  # For generating predicted effects#
+#
+# Boxplot + jitter of raw Faith PD data by Microplastic Presence and Parasite#
+p_overall_raw <- ggplot(model_data_overall_pd, aes(x = MicroplasticPresence, y = faith_pd, color = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +#
+  geom_jitter(width = 0.15, size = 2, alpha = 0.8) +#
+  labs(title = "Faith PD by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence", y = "Faith PD") +#
+  theme_minimal()#
+#
+p_overall_raw
+p_treated_raw <- ggplot(treated_data_pd, aes(x = MicroplasticConcentration, y = faith_pd, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(width = 0.8)) +#
+  geom_jitter(aes(color = MicroplasticLength), width = 0.15, size = 2,#
+              position = position_dodge(width = 0.8), alpha = 0.8) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Faith PD in Treated Samples",#
+       x = "Microplastic Concentration", y = "Faith PD") +#
+  theme_minimal()#
+#
+p_treated_raw
+# Boxplot + jitter of raw Faith PD data by Concentration and Length (with Parasite as a facet)#
+p_treated_raw <- ggplot(treated_data_pd, aes(x = MicroplasticConcentration, y = faith_pd, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(width = 0.8)) +#
+  geom_jitter(aes(color = MicroplasticLength), width = 0.15, size = 2,#
+              position = position_dodge(width = 0.8), alpha = 0.8) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Faith PD in Treated Samples",#
+       x = "Microplastic Concentration", y = "Faith PD") +#
+  theme_minimal()#
+#
+p_treated_raw
+# Boxplot + jitter of raw Faith PD data by Concentration and Length (with Parasite as a facet)#
+p_treated_raw <- ggplot(treated_data_pd, aes(x = MicroplasticConcentration, y = faith_pd, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(width = 0.8)) +#
+  geom_jitter(aes(color = MicroplasticLength), size = 2,#
+              position = position_dodge(width = 0.8), alpha = 0.8) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Faith PD in Treated Samples",#
+       x = "Microplastic Concentration", y = "Faith PD") +#
+  theme_minimal()#
+#
+p_treated_raw
+# Boxplot + jitter of raw Faith PD data by Concentration and Length (with Parasite as a facet)#
+p_treated_raw <- ggplot(treated_data_pd, aes(x = MicroplasticConcentration, y = faith_pd, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(width = 0.8)) +#
+  geom_jitter(aes(color = MicroplasticLength), size = 2,#
+              position = position_dodge(width = 0.8), alpha = 0.8) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Faith PD in Treated Samples",#
+       x = "Microplastic Concentration", y = "Faith PD") +#
+  theme_minimal()#
+#
+p_treated_raw
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "simpson-vector.qza")
+simpson_vector <- read_qza(qza_path)
+qza_path
+simpson_vector <- read_qza(qza_path)
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "simpson-vector.qzab")
+simpson_vector <- read_qza(qza_path)
+readRenviron(".Renviron")#
+#
+# -------------------------------------------------#
+# 1. Load and Merge Simpson Alpha Diversity Data#
+# -------------------------------------------------#
+#
+# Define the path to the exported Simpson TSV file#
+simpson_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "AlphaDiversity", "exported_simpson", "alpha-diversity.tsv")#
+#
+# Read the Simpson data (assumes tab-delimited with a header)#
+simpson_data <- read.table(simpson_path, header = TRUE, sep = "\t", stringsAsFactors = FALSE)#
+head(simpson_data)
+my_data <- merge(my_data, simpson_data, by = "SampleID_full", all.x = TRUE)#
+#
+# Filter out any rows missing Simpson data#
+my_data <- my_data[!is.na(my_data$simpson), ]#
+#
+# -------------------------------------------------#
+# 2. Prepare Treatment Variables#
+# -------------------------------------------------#
+#
+# Convert treatment variables to factors.#
+# (Replace these column names with the actual column names from your CSV.)#
+my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c("0", "S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))#
+#
+# Create a binary variable for microplastic presence (control vs. treatment)#
+my_data$MicroplasticPresence <- ifelse(my_data$MicroplasticConcentration == "0", "Absent", "Present")#
+my_data$MicroplasticPresence <- factor(my_data$MicroplasticPresence, levels = c("Absent", "Present"))#
+#
+# -------------------------------------------------#
+# 3. Overall Model: Controls vs. Treatments#
+# -------------------------------------------------#
+#
+# Create a pared-down data frame with only the necessary columns#
+model_data_overall <- my_data[, c("simpson", "MicroplasticPresence", "Parasite")]
+head(my_data)
+colnames(simpson)
+colnames(simpson_data)
+readRenviron(".Renviron")#
+#
+# -------------------------------------------------#
+# 1. Load and Merge Simpson Alpha Diversity Data#
+# -------------------------------------------------#
+#
+# Define the path to the exported Simpson TSV file#
+simpson_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "AlphaDiversity", "exported_simpson", "alpha-diversity.tsv")#
+#
+# Read the Simpson data (assumes tab-delimited with a header)#
+simpson_data <- read.table(simpson_path, header = TRUE, sep = "\t", stringsAsFactors = FALSE)#
+head(simpson_data)#
+# Expected output:#
+#   SampleID_full   simpson#
+#   KA001           0.8831962#
+#   KA011           0.9256630#
+#   ...#
+#
+# Rename the Simpson column if needed (here it's already named "simpson")#
+#
+# Merge Simpson data into your existing metadata (my_data)#
+# (Assumes my_data already exists and contains a column named SampleID_full)#
+my_data <- merge(my_data, simpson_data, by = "SampleID_full", all.x = TRUE)#
+#
+# Filter out any rows missing Simpson data#
+my_data <- my_data[!is.na(my_data$simpson), ]#
+#
+# -------------------------------------------------#
+# 2. Prepare Treatment Variables#
+# -------------------------------------------------#
+#
+# Convert treatment variables to factors.#
+# (Replace these column names with the actual column names from your CSV.)#
+my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c("0", "S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))#
+#
+# Create a binary variable for microplastic presence (control vs. treatment)#
+my_data$MicroplasticPresence <- ifelse(my_data$MicroplasticConcentration == "0", "Absent", "Present")#
+my_data$MicroplasticPresence <- factor(my_data$MicroplasticPresence, levels = c("Absent", "Present"))#
+#
+# -------------------------------------------------#
+# 3. Overall Model: Controls vs. Treatments#
+# -------------------------------------------------#
+#
+# Create a pared-down data frame with only the necessary columns#
+model_data_overall <- my_data[, c("simpson", "MicroplasticPresence", "Parasite")]#
+#
+# Check that the data has the expected levels#
+table(model_data_overall$MicroplasticPresence)#
+table(model_data_overall$Parasite)
+my_data
+simpson_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "AlphaDiversity", "exported_simpson", "alpha-diversity.tsv")#
+#
+# Read the Simpson data (assumes tab-delimited with a header)#
+simpson_data <- read.table(simpson_path, header = TRUE, sep = "\t", stringsAsFactors = FALSE)#
+head(simpson_data)#
+# Expected output:#
+#   SampleID_full   simpson#
+#   KA001           0.8831962#
+#   KA011           0.9256630#
+#   ...#
+#
+# Rename the Simpson column if needed (here it's already named "simpson")#
+#
+# Merge Simpson data into your existing metadata (my_data)#
+#
+my_data <- read.csv(csv_path, header = TRUE, stringsAsFactors = FALSE)#
+#
+# Create a full sample ID to match those in qza datafile#
+my_data$SampleID_full <- sprintf("KA%03d", as.numeric(my_data$Sample.ID))#
+my_data <- merge(my_data, simpson_data, by = "SampleID_full", all.x = TRUE)#
+#
+# Filter out any rows missing Simpson data#
+my_data <- my_data[!is.na(my_data$simpson), ]#
+#
+# -------------------------------------------------#
+# 2. Prepare Treatment Variables#
+# -------------------------------------------------#
+#
+# Convert treatment variables to factors.#
+# (Replace these column names with the actual column names from your CSV.)#
+my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c("0", "S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))#
+#
+# Create a binary variable for microplastic presence (control vs. treatment)#
+my_data$MicroplasticPresence <- ifelse(my_data$MicroplasticConcentration == "0", "Absent", "Present")#
+my_data$MicroplasticPresence <- factor(my_data$MicroplasticPresence, levels = c("Absent", "Present"))#
+#
+# -------------------------------------------------#
+# 3. Overall Model: Controls vs. Treatments#
+# -------------------------------------------------#
+#
+# Create a pared-down data frame with only the necessary columns#
+model_data_overall <- my_data[, c("simpson", "MicroplasticPresence", "Parasite")]#
+#
+# Check that the data has the expected levels#
+table(model_data_overall$MicroplasticPresence)#
+table(model_data_overall$Parasite)
+model_overall_simpson <- gamlss(#
+  simpson ~ MicroplasticPresence * Parasite,#
+  family = BCT,#
+  data = model_data_overall,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_overall_simpson)
+plot(model_overall_simpson)
+wp(model_overall_simpson)
+treated_data <- subset(my_data, MicroplasticPresence == "Present")#
+#
+# Create a new data frame that includes only the necessary columns#
+treated_data <- treated_data[, c("simpson", "MicroplasticLength", "MicroplasticConcentration", "Parasite")]#
+#
+# Drop any unused factor levels#
+treated_data$MicroplasticLength <- droplevels(treated_data$MicroplasticLength)#
+treated_data$MicroplasticConcentration <- droplevels(treated_data$MicroplasticConcentration)#
+treated_data$Parasite <- droplevels(treated_data$Parasite)#
+#
+# Check the counts to confirm the expected levels for the treatment factors#
+table(treated_data$MicroplasticConcentration)#
+table(treated_data$MicroplasticLength)#
+#
+# Fit the gamlss BCT model for treated samples (modeling only μ)#
+model_treated_simpson <- gamlss(#
+  simpson ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,#
+  data = treated_data,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_treated_simpson)
+plot(model_treated_simpson)
+wp(model_treated_simpson)
+model_treated_simpson_sigma <- gamlss(#
+  simpson ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  sigma.formula = ~ MicroplasticLength * MicroplasticConcentration * Parasite,#
+  family = BCT,#
+  data = treated_data,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_treated_simpson_sigma)
+plot(model_treated_simpson_sigma)
+wp(model_treated_simpson_sigma)
+# Plot raw Faith PD data by MicroplasticPresence and Parasite#
+p_overall_data <- ggplot(model_data_overall_pd, aes(x = MicroplasticPresence, y = faith_pd, fill = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8), alpha = 0.7) +#
+  geom_jitter(aes(color = Parasite), position = position_dodge(width = 0.8), width = 0.2, size = 2, alpha = 0.8) +#
+  labs(title = "Faith PD by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence",#
+       y = "Faith PD") +#
+  theme_minimal() +#
+  theme(legend.title = element_blank())#
+#
+p_overall_data
+library(ggplot2)#
+#
+# Plot raw Simpson data by MicroplasticPresence and Parasite#
+p_overall_simpson <- ggplot(model_data_overall_pd, #
+                            aes(x = MicroplasticPresence, y = simpson, fill = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8), alpha = 0.7) +#
+  geom_jitter(aes(color = Parasite), #
+              position = position_dodge(width = 0.8), #
+              width = 0.2, size = 2, alpha = 0.8) +#
+  labs(title = "Simpson Diversity by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence",#
+       y = "Simpson Diversity") +#
+  theme_minimal() +#
+  theme(legend.title = element_blank())#
+#
+p_overall_simpson
+# Plot raw Simpson data by MicroplasticPresence and Parasite#
+p_overall_simpson <- ggplot(model_data_overall_pd, #
+                            aes(x = MicroplasticPresence, y = simpson, fill = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8), alpha = 0.7) +#
+  geom_jitter(aes(color = Parasite), #
+              position = position_dodge(width = 0.8), #
+              size = 2, alpha = 0.8) +#
+  labs(title = "Simpson Diversity by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence",#
+       y = "Simpson Diversity") +#
+  theme_minimal() +#
+  theme(legend.title = element_blank())#
+#
+p_overall_simpson
+# Plot raw Simpson data by MicroplasticPresence and Parasite#
+p_overall_simpson <- ggplot(model_overall_simpson, #
+                            aes(x = MicroplasticPresence, y = simpson, fill = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8), alpha = 0.7) +#
+  geom_jitter(aes(color = Parasite), #
+              position = position_dodge(width = 0.8), #
+              size = 2, alpha = 0.8) +#
+  labs(title = "Simpson Diversity by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence",#
+       y = "Simpson Diversity") +#
+  theme_minimal() +#
+  theme(legend.title = element_blank())#
+#
+p_overall_simpson
+Plot raw Simpson data by MicroplasticPresence and Parasite#
+p_overall_simpson <- ggplot(model_data_overall, #
+                            aes(x = MicroplasticPresence, y = simpson, fill = Parasite)) +#
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8), alpha = 0.7) +#
+  geom_jitter(aes(color = Parasite), #
+              position = position_dodge(width = 0.8), #
+              size = 2, alpha = 0.8) +#
+  labs(title = "Simpson Diversity by Microplastic Presence & Parasite",#
+       x = "Microplastic Presence",#
+       y = "Simpson Diversity") +#
+  theme_minimal() +#
+  theme(legend.title = element_blank())#
+#
+p_overall_simpson
+p_treated_simpson <- ggplot(treated_data, #
+                            aes(x = MicroplasticConcentration, y = simpson, fill = MicroplasticLength)) +#
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8), alpha = 0.7) +#
+  geom_jitter(aes(color = MicroplasticLength), #
+              position = position_dodge(width = 0.8), #
+              size = 2, alpha = 0.8) +#
+  facet_wrap(~ Parasite) +#
+  labs(title = "Simpson Diversity in Treated Samples",#
+       x = "Microplastic Concentration",#
+       y = "Simpson Diversity") +#
+  theme_minimal() +#
+  theme(legend.title = element_blank())#
+#
+p_treated_simpson
+qza_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "shannon_vector.qza")#
+shannon_vector <- read_qza(qza_path)#
+#
+# Load your metadata CSV file#
+csv_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "Metadata for microbiota analysis.xlsx - PES MPF paper metadata.csv")#
+my_data <- read.csv(csv_path, header = TRUE, stringsAsFactors = FALSE)#
+#
+# Create a full sample ID to match those in the shannon_vector artifact#
+my_data$SampleID_full <- sprintf("KA%03d", as.numeric(my_data$Sample.ID))#
+#
+# Convert the row names of the shannon data to a column for merging#
+shannon_df <- shannon_vector$data#
+shannon_df$SampleID_full <- rownames(shannon_df)#
+#
+# Merge the shannon_entropy data into the metadata using SampleID_full#
+my_data <- merge(my_data, shannon_df[, c("SampleID_full", "shannon_entropy")],#
+                 by = "SampleID_full", all.x = TRUE)#
+#
+# View the first few rows of the merged data#
+head(my_data)#
+#
+# ------------------------------#
+# Prepare the data for modeling#
+# ------------------------------#
+#
+# Convert treatment variables to factors.#
+# Replace these column names with the actual names in your CSV if they differ.#
+my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c("0", "S", "L"))#
+my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))#
+my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))#
+#
+# Filter out the NAs#
+my_data <- my_data[!is.na(my_data$shannon_entropy),]#
+#
+#### separate out parasite presesnce as a binary variable#
+# 1. Create a binary variable for microplastic presence.#
+my_data$MicroplasticPresence <- ifelse(my_data$MicroplasticConcentration == "0", "Absent", "Present")#
+my_data$MicroplasticPresence <- factor(my_data$MicroplasticPresence, levels = c("Absent", "Present"))#
+#
+# 2. For the overall model (controls vs. treatments), create a pared-down data frame#
+model_data_overall <- my_data[, c("shannon_entropy", "MicroplasticPresence", "Parasite")]#
+#
+# Check that the data has the expected dimensions and levels#
+table(model_data_overall$MicroplasticPresence)#
+table(model_data_overall$Parasite)#
+#
+# 3. Fit the overall gamlss BCT model (modeling only mu, with sigma, nu, and tau as intercept-only)#
+model_overall <- gamlss(#
+  shannon_entropy ~ MicroplasticPresence * Parasite,#
+  family = BCT,#
+  data = model_data_overall,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_overall)#
+#Global Deviance:     133.3354 #
+#            AIC:     147.3354 #
+#            SBC:     165.4301
+model_overall_sigma <- gamlss(#
+  shannon_entropy ~ MicroplasticPresence * Parasite,#
+  sigma.formula = ~ MicroplasticPresence * Parasite,#
+  family = BCT,#
+  data = model_data_overall,#
+  control = gamlss.control(n.cyc = 50)#
+)#
+summary(model_overall_sigma)

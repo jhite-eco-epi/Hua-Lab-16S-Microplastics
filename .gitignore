@@ -1,3 +1,5 @@
 renv/
 data/
 .Renv
+.DS_Store
+.Rapp.history
