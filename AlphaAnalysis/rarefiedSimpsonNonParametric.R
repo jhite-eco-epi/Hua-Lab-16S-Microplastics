@@ -60,12 +60,37 @@ merged_data$MicroplasticPresence <- factor(merged_data$MicroplasticPresence, lev
 kw_presence <- kruskal.test(simpson ~ MicroplasticPresence, data = merged_data)
 print(kw_presence)
 
+# 	Kruskal-Wallis rank sum test
+
+# data:  simpson by MicroplasticPresence
+# Kruskal-Wallis chi-squared = 1.6629, df = 1, p-value = 0.1972
+
 # Test for differences by Parasite status
 kw_parasite <- kruskal.test(simpson ~ Parasite, data = merged_data)
 print(kw_parasite)
 
-# If needed, you could test an interaction by splitting groups,
-# but for non-parametric tests it's common to test each factor separately.
+# 	Kruskal-Wallis rank sum test
+
+# data:  simpson by Parasite
+# Kruskal-Wallis chi-squared = 0.091187, df = 1, p-value = 0.7627
+
+
+# -------------------------------
+# Full interaction model as a single variable:
+# -------------------------------
+
+merged_data$interactionGroup <- interaction(merged_data$MicroplasticLength, 
+                                              merged_data$MicroplasticConcentration, 
+                                              merged_data$Parasite, sep = "_")
+
+# Run the Kruskal-Wallis test on the combined groups
+kw_result <- kruskal.test(simpson ~ interactionGroup, data = merged_data)
+print(kw_result)
+
+# 	Kruskal-Wallis rank sum test
+
+# data:  simpson by interactionGroup
+# Kruskal-Wallis chi-squared = 10.885, df = 9, p-value = 0.2837
 
 
 # -------------------------------
@@ -106,8 +131,54 @@ print(dunn_length)
 
 
 # Scheirer-Ray-Hare test
-
 library(rcompanion)
 
-scheirerRayHare(simpson ~ MicroplasticLength * MicroplasticConcentration * Parasite, data = merged_data)
+# note there is no scheirerRayHare that handles 3 factors in R, so here is our two factor test:
 scheirerRayHare(simpson ~ MicroplasticPresence * Parasite, data = merged_data)
+
+
+# DV:  simpson 
+# Observations:  98 
+# D:  1 
+# MS total:  808.5 
+
+#                               Df Sum Sq      H p.value
+# MicroplasticPresence           1   1362 1.6842 0.19437
+# Parasite                       1     91 0.1125 0.73735
+# MicroplasticPresence:Parasite  1   3438 4.2520 0.03920
+# Residuals                     94  73551               
+
+
+# interaction factor combining MicroplasticPresence and Parasite
+merged_data$interactionGroup <- interaction(merged_data$MicroplasticPresence, merged_data$Parasite)
+
+# Run Dunn's test on the response variable 'simpson' across the interaction groups
+dunn_result <- dunn.test(merged_data$simpson, merged_data$interactionGroup, method = "bonferroni")
+
+# Print the results
+print(dunn_result)
+
+# Kruskal-Wallis rank sum test
+
+# data: x and group
+# Kruskal-Wallis chi-squared = 6.0274, df = 3, p-value = 0.11
+
+
+#                         Comparison of x by group                            
+#                                 (Bonferroni)                                  
+# Col Mean-|
+# Row Mean |   Absent.N   Absent.P   Present.
+# ---------+---------------------------------
+# Absent.P |  -1.704353
+#         |     0.2649
+#         |
+# Present. |  -0.587846   1.601514
+#         |     1.0000     0.3278
+#         |
+# Present. |   0.148750   2.364461   1.208179
+#         |     1.0000     0.0542     0.6809
+
+# alpha = 0.05
+# Reject Ho if p <= alpha/2
+
+# only thing that comes close to significant here is Microplastic presence x microplastic Abscence with parasite present

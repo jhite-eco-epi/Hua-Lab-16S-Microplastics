@@ -13,7 +13,7 @@ Each step is documented with the associated QIIME 2 commands and an explanation
 
 ## Prerequisites
 
-- QIIME 2 (version 2024.10.1 or later)
+- QIIME 2 (version 2024.10.1 or later, to activate: conda activate qiime2-amplicon-2024.10)
 - Access to the pre-filtered feature table artifact from Box
 - Basic command-line proficiency
 
@@ -74,6 +74,14 @@ qiime diversity alpha \
 
 This command computes Simpson's diversity for each sample and outputs the results as simpson_vector.qza.
 
+```
+qiime diversity alpha-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table rarefied_table.qza \
+  --p-metric faith_pd \
+  --o-alpha-diversity rarefied_faith_pd_vector.qza
+```
+
 ### 6. Export the Simpson Diversity Results 
 
 To export the Simpson diversity metrics to a TSV file for further analysis in R or another tool, run:
@@ -83,3 +91,14 @@ qiime tools export \
   --input-path rarefied_simpson_vector.qza \
   --output-path exported_simpson_rarefied
 ```
+
+### Bonus - adding in Beta diversity calculations:
+
+qiime diversity beta \
+  --i-table rarefied_table.qza \
+  --p-metric braycurtis \
+  --o-distance-matrix rarefied_braycurtis_distance_matrix.qza
+
+qiime tools export \
+  --input-path rarefied_braycurtis_distance_matrix.qza \
+  --output-path exported_braycurtis_matrix
