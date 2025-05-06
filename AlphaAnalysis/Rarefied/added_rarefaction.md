@@ -102,3 +102,15 @@ qiime diversity beta \
 qiime tools export \
   --input-path rarefied_braycurtis_distance_matrix.qza \
   --output-path exported_braycurtis_matrix
+
+  ### Super extra bonus - taxa bar plots:
+
+  qiime taxa barplot \
+  --i-table rarefied_table.qza \
+  --i-taxonomy Taxa/taxonomy.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization taxa-barplots-rarefied.qzv
+
+qiime tools export \
+  --input-path taxa-barplots-rarefied.qzv \
+  --output-path exported_taxa_barplot_data

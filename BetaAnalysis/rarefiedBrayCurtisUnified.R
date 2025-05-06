@@ -62,6 +62,40 @@ scores_global <- merge(scores_global, my_data_subset, by.x = "SampleID", by.y = 
 # -------------------------------------------
 # 6. Create NMDS Plot for the Full Model
 # -------------------------------------------
+
+library(viridis)
+
+# Create the boxplot of NMDS1 using MicroplasticConcentration as the x-axis variable
+# Facet by Parasite (rows) and MicroplasticLength (columns)
+beta_boxplot <- ggplot(scores_global, aes(x = MicroplasticConcentration, y = NMDS1, fill = MicroplasticLength)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.75)) +
+  geom_jitter(position = position_dodge(width = 0.75), alpha = 0.7, size = 2) +
+  facet_grid(. ~ Parasite, 
+             labeller = labeller(
+               Parasite = c("NP" = "No Parasite", "P" = "Parasite"),
+               MicroplasticLength = c("0" = "Control", "S" = "Short", "L" = "Long")
+             )) +
+  scale_fill_viridis_d(name = "Microplastic Length",
+                       labels = c("Control", "Short", "Long"),
+                       option = "plasma") +
+  labs(x = "Microplastic Concentration (µg/L)",
+       y = "Ordination Score (NMDS 1)",
+       title = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Removing default legend title since we're setting it via scale_fill_viridis_d
+        legend.title = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        strip.text = element_text(size = 14),
+        panel.border = element_rect(color = "gray", fill = NA, size = 1),
+        panel.spacing.x = unit(1, "lines"))
+
+print(beta_boxplot)
+
+
+
 # Mapping: CombinedTreatment (color) and Parasite (shape)
 p_global <- ggplot(scores_global, aes(x = NMDS1, y = NMDS2, 
                                         color = CombinedTreatment, 
@@ -121,7 +155,6 @@ pairwise_results <- pairwise.adonis(bray_matrix_subset, my_data_subset$CombinedT
 # Print the pairwise comparisons results
 print(pairwise_results)
 
-
 #                           pairs Df SumsOfSqs   F.Model         R2 p.value p.adjusted sig
 # 1  Treated_40_L vs Treated_10_S  1 0.3137012 1.3152677 0.03432751   0.198       1.00    
 # 2  Treated_40_L vs Treated_10_L  1 0.3895936 1.7678931 0.04560199   0.055       0.55    
@@ -133,4 +166,3 @@ print(pairwise_results)
 # 8  Treated_10_L vs Treated_40_S  1 0.1162713 0.5984347 0.01550412   0.879       1.00    
 # 9       Treated_10_L vs Control  1 0.5431027 2.9601723 0.07407807   0.004       0.04   .
 # 10      Treated_40_S vs Control  1 0.4678302 2.4021418 0.06096475   0.010       0.10    
-

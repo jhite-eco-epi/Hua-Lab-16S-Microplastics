@@ -61,6 +61,32 @@ output_plot <- ggplot(merged_data, aes(x = MicroplasticLength, y = shannon, colo
 
 output_plot
 
+library(viridis)
+
+output_plot <- ggplot(merged_data, aes(x = MicroplasticConcentration, y = shannon, fill = MicroplasticLength)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape = NA) +
+  geom_jitter(position = position_dodge(width = 0.75), alpha = 0.7, size = 2) +
+  facet_grid(. ~ Parasite, 
+             labeller = labeller(Parasite = c("NP" = "No Parasite", "P" = "Parasite"))) +
+  scale_fill_viridis_d(name = "Microplastic Length",
+                       labels = c("Control", "Short", "Long"),
+                       option = "plasma") +
+  labs(x = "Microplastic Concentration (µg/L)",
+       y = "Shannon Diversity Index",
+       title = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Removing default legend title since we're setting it via scale_fill_viridis_d
+        legend.title = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        strip.text = element_text(size = 14),
+        panel.border = element_rect(color = "gray", fill = NA, size = 1),
+        panel.spacing.x = unit(1, "lines"))
+
+print(output_plot)
+
 
 # Create a new combined treatment variable based on concentration and length.
 # If concentration is "0", then label as "Control". Otherwise, label as "Treated_{Concentration}_{Length}"

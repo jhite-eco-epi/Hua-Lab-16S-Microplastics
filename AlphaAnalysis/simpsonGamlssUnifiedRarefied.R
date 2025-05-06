@@ -55,6 +55,23 @@ my_data$MicroplasticLength <- factor(my_data$MPF.length..Long.Short., levels = c
 my_data$MicroplasticConcentration <- factor(my_data$Concentration..µg.L., levels = c("0", "10", "40"))
 my_data$Parasite <- factor(my_data$Parasite..P.parasite.NP.non.parasite., levels = c("NP", "P"))
 
+
+# Create a new combined treatment variable based on concentration and length.
+# If concentration is "0", then label as "Control". Otherwise, label as "Treated_{Concentration}_{Length}"
+my_data$CombinedTreatment <- ifelse(my_data$MicroplasticConcentration == "0", 
+                                    "Control", 
+                                    paste("Treated",
+                                          my_data$MicroplasticConcentration,
+                                          my_data$MicroplasticLength,
+                                          sep = "_"))
+# Convert the new variable to a factor
+my_data$CombinedTreatment <- factor(my_data$CombinedTreatment)
+
+# Check the resulting levels
+table(my_data$CombinedTreatment)
+
+
+
 # Create a binary variable for microplastic presence (control vs. treatment)
 my_data$MicroplasticPresence <- ifelse(my_data$MicroplasticConcentration == "0", "Absent", "Present")
 my_data$MicroplasticPresence <- factor(my_data$MicroplasticPresence, levels = c("Absent", "Present"))
