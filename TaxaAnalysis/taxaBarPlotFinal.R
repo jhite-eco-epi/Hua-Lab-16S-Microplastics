@@ -17,10 +17,11 @@ library(stringr)
 # If your file is tab-delimited, replace read_csv with read_tsv.
 
 # -------------------------------
-# Load and Prepare Simpson Diversity Data
+# 1. Load and Prepare Taxonomic Data
 # -------------------------------
 
-# Read the exported Simpson diversity TSV file
+# Read the Level 2 (Phylum) taxonomic data from the CSV file.
+# This file contains taxonomic counts and metadata for each sample.
 csv_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "level-2-rarefied.csv")
 data <- read_csv(csv_path)
 
