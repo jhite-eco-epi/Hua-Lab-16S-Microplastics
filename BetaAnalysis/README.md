@@ -56,4 +56,36 @@ The analysis generated two key plots, which are displayed below.
 
     ![NMDS Ordination Plot](rarefiedBrayCurtisUnified.jpg)
 
-These plots are saved from the R script. You can find them in the `BetaAnalysis` folder. 
+These plots are saved from the R script. You can find them in the `BetaAnalysis` folder.
+
+---
+
+## Complementary Analysis using Jaccard Distance
+
+To ensure the results were robust, a complementary analysis was performed using the **Jaccard distance** metric (`rarefiedJaccardUnified.R`). Unlike Bray-Curtis, which is based on species abundance, Jaccard distance is based on the **presence or absence** of species. This allows us to see if community changes are due to shifts in abundance or the complete appearance/disappearance of certain taxa.
+
+### 1. Overall PERMANOVA (Jaccard)
+
+The Jaccard-based PERMANOVA revealed:
+*   A **highly significant effect of microplastic exposure** (`CombinedTreatment`), consistent with the Bray-Curtis results (R² = 0.061, p = 0.001).
+*   No significant main effect of `Parasite` status (p = 0.435).
+*   A **borderline significant interaction** between `Parasite` and `CombinedTreatment` (R² = 0.048, p = 0.066), suggesting the effect of microplastics on species presence/absence may differ slightly depending on parasite status.
+
+### 2. Pairwise Comparisons (Jaccard)
+
+The pairwise analysis showed one significant difference after Bonferroni correction:
+*   **`Control` vs. `Treated_10_S` (10 µg/L, Short)**: Significant difference (p.adj = 0.04).
+
+This finding reinforces that the 10 µg/L short-fiber treatment caused a significant shift in the microbial community, specifically relating to which species were present or absent compared to the control group.
+
+### 3. Visualization (Jaccard)
+
+The plots below visualize the Jaccard-based NMDS ordination.
+
+*   **Boxplot of NMDS Axis 1 (Jaccard)**:
+
+    ![Boxplot of NMDS1 (Jaccard)](rarefiedJaccardUnifiedSingleDimension.png)
+
+*   **NMDS Ordination Plot (Jaccard)**:
+
+    ![NMDS Ordination Plot (Jaccard)](rarefiedJaccardUnified.png) 
