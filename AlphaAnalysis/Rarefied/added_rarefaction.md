@@ -103,6 +103,16 @@ qiime tools export \
   --input-path rarefied_braycurtis_distance_matrix.qza \
   --output-path exported_braycurtis_matrix
 
+### Calculate Jaccard distance matrix
+qiime diversity beta \
+  --i-table rarefied_table.qza \
+  --p-metric jaccard \
+  --o-distance-matrix rarefied_jaccard_distance_matrix.qza
+
+qiime tools export \
+  --input-path rarefied_jaccard_distance_matrix.qza \
+  --output-path exported_jaccard_matrix
+
   ### Super extra bonus - taxa bar plots:
 
   qiime taxa barplot \
