@@ -10,6 +10,8 @@ The primary goal of this analysis was to determine if and how microbial communit
 
 This was assessed using the **Shannon Diversity Index**, a metric that accounts for both the number of species (richness) and their relative abundance (evenness).
 
+For a detailed comparison of results using other common alpha diversity metrics (including Faith's PD, Chao1, Pielou's Evenness, and Simpson's Index), please see the **[Alpha Diversity Metrics Comparison](./Alpha_Diversity_Metrics_Comparison.md)**.
+
 ## Methodology
 
 The analysis was conducted in the `rarefiedShannonNonParametricUnifiedPlot.R` script.

@@ -10,15 +10,15 @@ library(dunn.test)
 readRenviron(".Renviron")
 
 # -------------------------------
-# Load and Prepare Simpson Diversity Data
+# Load and Prepare Simpson's Diversity Data
 # -------------------------------
 
-# Read the exported Simpson diversity TSV file
+# Read the exported Simpson's diversity TSV file
 tsv_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "rarefied_simpson.tsv")
 simpson_data <- read.table(tsv_path, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 head(simpson_data)
 
-# Rename the first column to "SampleID_full" and the second column to "simpson"
+# Rename the first column to "SampleID_full" and the second column to the metric
 names(simpson_data)[1] <- "SampleID_full"
 names(simpson_data)[2] <- "simpson"
 
@@ -35,7 +35,7 @@ head(treatment_data)
 # Create a matching SampleID_full in the treatment data
 treatment_data$SampleID_full <- sprintf("KA%03d", as.numeric(treatment_data$Sample.ID))
 
-# Merge treatment metadata with Simpson diversity data
+# Merge treatment metadata with Simpson's diversity data
 merged_data <- merge(treatment_data, simpson_data, by = "SampleID_full", all.x = TRUE)
 head(merged_data)
 
@@ -50,13 +50,55 @@ merged_data$Parasite <- factor(merged_data$Parasite..P.parasite.NP.non.parasite.
 
 
 
-p_simpson <- ggplot(merged_data, aes(x = MicroplasticLength, y = simpson, color = MicroplasticConcentration)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +
-  geom_jitter(position = position_dodge(width = 0.75), alpha = 0.7) +
-  facet_wrap(~ Parasite) +
-  labs(title = "Simspon Diversity by Length, Concentration, & Parasite",
-       x = "Microplastic Length",
-       y = "Simpson's Diversity") +
-  theme_minimal()
+library(viridis)
 
-p_simpson
+output_plot <- ggplot(merged_data, aes(x = MicroplasticConcentration, y = simpson, fill = MicroplasticLength)) +
+  geom_boxplot(position = position_dodge(width = 0.75), outlier.shape = NA) +
+  geom_jitter(position = position_dodge(width = 0.75), alpha = 0.7, size = 2) +
+  facet_grid(. ~ Parasite, 
+             labeller = labeller(Parasite = c("NP" = "No Parasite", "P" = "Parasite"))) +
+  scale_fill_viridis_d(name = "Microplastic Length",
+                       labels = c("Control", "Short", "Long"),
+                       option = "plasma") +
+  labs(x = "Microplastic Concentration (µg/L)",
+       y = "Simpson's Diversity Index",
+       title = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        strip.text = element_text(size = 14),
+        panel.border = element_rect(color = "gray", fill = NA, size = 1),
+        panel.spacing.x = unit(1, "lines"))
+
+print(output_plot)
+
+
+# Create a new combined treatment variable based on concentration and length.
+# If concentration is "0", then label as "Control". Otherwise, label as "Treated_{Concentration}_{Length}"
+merged_data$CombinedTreatment <- ifelse(merged_data$MicroplasticConcentration == "0", 
+                                    "Control", 
+                                    paste("Treated",
+                                          merged_data$MicroplasticConcentration,
+                                          merged_data$MicroplasticLength,
+                                          sep = "_"))
+# Convert the new variable to a factor
+merged_data$CombinedTreatment <- factor(merged_data$CombinedTreatment)
+
+library(rcompanion)
+
+# Run the Scheirer-Ray-Hare test, a non-parametric equivalent of a two-way ANOVA
+scheirerRayHare(simpson ~ CombinedTreatment * Parasite, data = merged_data)
+
+# DV:  simpson 
+# Observations:  98 
+# D:  1 
+# MS total:  808.5 
+
+#                            Df Sum Sq      H p.value
+# CombinedTreatment           4   2366 2.9269 0.57013
+# Parasite                    1    102 0.1257 0.72295
+# CombinedTreatment:Parasite  4   6360 7.8668 0.09658
+# Residuals                  88  69624

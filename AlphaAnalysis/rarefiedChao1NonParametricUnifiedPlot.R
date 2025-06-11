@@ -10,15 +10,15 @@ library(dunn.test)
 readRenviron(".Renviron")
 
 # -------------------------------
-# Load and Prepare Simpson Diversity Data
+# Load and Prepare Chao1 Diversity Data
 # -------------------------------
 
-# Read the exported Simpson diversity TSV file
+# Read the exported Chao1 diversity TSV file
 tsv_path <- file.path(Sys.getenv("BASE_DATA_PATH"), "rarefied_chao1.tsv")
 tsv_data <- read.table(tsv_path, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 head(tsv_data)
 
-# Rename the first column to "SampleID_full" and the second column to "simpson"
+# Rename the first column to "SampleID_full" and the second column to the metric
 names(tsv_data)[1] <- "SampleID_full"
 names(tsv_data)[2] <- "chao1"
 
@@ -35,7 +35,7 @@ head(treatment_data)
 # Create a matching SampleID_full in the treatment data
 treatment_data$SampleID_full <- sprintf("KA%03d", as.numeric(treatment_data$Sample.ID))
 
-# Merge treatment metadata with Simpson diversity data
+# Merge treatment metadata with Chao1 diversity data
 merged_data <- merge(treatment_data, tsv_data, by = "SampleID_full", all.x = TRUE)
 head(merged_data)
 
